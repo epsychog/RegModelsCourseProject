@@ -1,0 +1,97 @@
+Automatic or Manual Transmission for More Miles per Gallon?
+========================================================
+## Executive Summary
+The purpose of this report is to examine the differences between automatic and manual transmission and the impact of each to miles per gallon (MPG) consumption. The data used for this analysis is the **mtcars** data set included in R. 
+
+The findings of the analysis can be summarised as follows:
+* We observed that cars with automatic transmission have lower consumption than cars with manual transmission
+* In quantifying the MPG difference between automatic and manual transmission, we discovered that transmission type alone is not enough to tell the difference. However, when combined with # of cylinders (cyl) and weight (wt) we get a model with good prediction accuracy and we can deduce that on average an increase in weight causes a decrease of 3.1 in MPG and an increase in the number of cylinders causes a decrease of 1,5 in MPG.
+
+## Data Processing
+The data used for this analysis is the **mtcars** data set included in R. The data set was loaded in R and used directly without the need of any preprocessing.
+```{r echo=FALSE}
+# Move to the project working directory
+setwd('C:\\epsychog\\Trainings & Events\\Data Science\\Data Science Specialisation (coursera)\\7. Regression Models\\CourseProject')
+attach(mtcars)
+data <- mtcars
+# Change the value of variable am to be auto or manual
+data$am[data$am==1] <- "Manual"
+data$am[data$am==0] <- "Automatic"
+```
+
+## Results
+### 1. Is automatic or manual transmission better for MPG?
+#### Exploratory Data Analysis
+The transmission variable is categorical that takes the values 0 for Automatic and 1 for Manual. Boxplots are a good way to present the consumption distribution (mpg) against each transmission type. From the plot below it is evident that  cars with automatic transmission have lower consumption.
+```{r echo=FALSE, fig.width=5, fig.height=5}
+# Plot to compare a comparisson of MPG between Automatic and Manual transmissions
+boxplot(mpg~am,data=data, main="Consumption (MPG) per Transmission type", xlab="Transmission", ylab="Miles/Gallon", col="lightgreen")
+```
+
+```{r echo=FALSE}
+manMean <- mean(mtcars$mpg[mtcars$am==1])
+autoMean <- mean(mtcars$mpg[mtcars$am==0])
+corAm <- cor(mtcars$mpg,mtcars$am)
+```
+More specifically the cars with automatic transmission have an average of **`r autoMean`** and the cars with manual transmission have an average of **`r manMean`**. However, the correlation between transmission and MPG is **`r corAm`** which is very low. This makes us suspect that there could be more variables in the data set that need to be included to explain the MPG consumption.
+
+#### Linear Regresssion & Model Selection
+We start by fitting a model that predicts the MPG using the transmission type as the only predictor.
+```{r echo=FALSE}
+# Fit the linear model between glm and am
+fit1 <- lm(mtcars$mpg~mtcars$am)
+```
+
+#### Interpretting the Coefficients
+The model coefficients are: intercept = **`r fit1$coefficients[1]`** and slope= **`r fit1$coefficients[2]`**. The intercept is equal to the average MPG for cars with automatic transmission which does not make much sense but helps establish a baseline. The slope shows that when we switch from manual to automatic transmission we gain on average **`r fit1$coefficients[2]`** MPG.
+
+#### Using the Residuals to Diagnose the Model Accuracy 
+We looked at the residuals plot and a histogram of the residuals. From the histogram we observe that residuals are approximately normally distributed and the QQ Plot shows some normality.  There is also some indication that there is an excess of large residuals and the spread is  quite large.
+
+```{r echo=FALSE, fig.width=10, fig.height=7}
+par(mfrow=c(2,3))
+hist(resid(fit1), xlab="Residuals", main="Model of MPG Using only Transmission (am)", col="lightyellow")
+plot (fit1)
+```
+
+```{r echo=FALSE}
+fit1Sum <- summary(fit1)
+# fit1Sum we do not show the results to save space
+```
+In addition to the residuals we see that the value of R-squared is **`r fit1Sum$r.squared`** which is very low indicating that our model is not a good fit to the data.
+
+#### Multiple Models Fit and Model Selection Strategy
+To find a model that fits our data better we start introducing more predictor variables in addition to transmission. We have selected the variables with the highest correlation with mpg and run the following 5 models with mpg as the output variable and a different predictors:
+* Model1 (fit1): 1 predictor: am
+* Model2 (fit2): 2 predictors: - am + cyl
+* Model3 (fit3): 3 predictors: am + cyl + wt
+* Model4 (fit4): 4 predictors: am + cyl + wt + disp
+* Model5 (fitAll): predictors: all
+```{r echo=FALSE}
+fit1 <- lm(mtcars$mpg~mtcars$am)
+fit2 <- lm(mpg~am+cyl,data=mtcars)
+fit3 <- lm(mpg~am+cyl+wt,data=mtcars)
+fit4 <- lm(mpg~am+cyl+disp+wt,data=mtcars)
+fitAll <- lm(mpg~.,data=mtcars)
+
+x <- AIC(fit1,fit2,fit3,fit4,fitAll)
+#x[x$AIC == min(x$AIC),]
+```
+To select the best model we examined the p-value and R-squared values of each model. In addition, we used the Akaike's ‘An Information Criterion (AIC) function to cross check and confirm our initial validation. The best model given by the AIC function was **Model3**.
+
+### 2. Quantify MPG difference between automatic and manual transmission
+We discovered that transmission type alone is not enough to predict the difference in MPG consumption. However, when combined with the number of cylinders (cyl) and weight (wt) we get a model with good prediction accuracy. In this section we quantify the MPG different between automatic and manual transmissions combined with cylinder and weight.
+
+#### Quantify the uncertainty as a conclusion and Perform inference
+To quantify we used the results of **Model3** with predictors transmission, cylinders and weight. 
+
+```{r echo=FALSE}
+s3 <- summary(fit3)
+s3$coefficients
+```
+
+First, we quantify the **model accuracy** using the residual standard error (RSE) and the R-squared values.
+
+The **RSE value is 2.6** which means that on average the estimated response deviates in 2.6 MPG from the actual response. The **residuals** show that in the worst case there is a deviation of 6.1 (max residual) in the MPG response, and that most of the estimates deviate between -1.5 to 1.6 MPG (1Q to 3Q) from the actual responses. In addition, the R-squared (**`r s3$adj.r.squared`**) value shows that our model have an 81% fit to the data. This indicates that we have the right model, but there is some room for improvement. Finally, the **p-value** is very small that indicates a correlation between the predictor variables and the responses.
+
+Next we look at the coefficients. We start by looking only at what the am (transmission type) predictor gives assuming we hold all other variables constant. We observe that the **Pr value** for transmission is very large indicating that there is 89% chance of getting this coefficient by chance rather than because of correlation between am and mpg. In other words the transmission type alone does not tell us much about the MPG consumption. On the contrary, the other predictors cyl and wt are highly (reversely) correlated to the MPG consumption. The coefficients of cyl and wt, combined with am, show that on average an increase in weight causes a decrease of 3.1 in MPG and an increase in the number of cylinders causes a decrease of 1,5 in MPG.
